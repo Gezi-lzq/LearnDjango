@@ -1,3 +1,7 @@
-from django.shortcuts import render
+from django.http import HttpResponse
 
-# Create your views here.
+def index(request):
+    data="<h2 style='text-align:center'>Hello World</h2><h3 style='text-align:center'>Hello Tanggg --from lzq</h3>"
+    return HttpResponse(data)
+
+
