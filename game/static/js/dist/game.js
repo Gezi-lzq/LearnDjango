@@ -118,7 +118,42 @@ class GameMap extends GameObject {
         this.ctx.fillRect(0,0,this.ctx.canvas.width,this.ctx.canvas.height);
     }
 }
-class Player extends GameObject {
+class Particle extends GameObject {
+    constructor(playground, x, y, radius, vx, vy, color, speed, move_length) {
+        super();
+        this.playground = playground;
+        this.ctx = this.playground.game_map.ctx;
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.speed = speed;
+        this.move_length = move_length;
+        this.friction = 0.9;
+        this.eqs = 3;        
+    }
+    start(){}
+    update() {
+        if(this.move_length < this.eqs || this.speed <this.eqs ){
+            this.destory();
+            return false;
+        }
+        let moved = Math.min(this.move_length,this.speed * this.timedelta/1000);
+        this.x += this.vx * moved;
+        this.y += this.vy * moved;
+        this.speed *= this.friction;
+        this.move_length -= moved;
+        this.render();
+    }
+    render() {
+        this.ctx.beginPath();
+        this.ctx.arc(this.x,this.y,this.radius,0,Math.PI *2,false);
+        this.ctx.fillStyle = this.color;
+        this.ctx.fill();
+    }
+}class Player extends GameObject {
     constructor(playground, X, Y, radius, color, speed, is_me) {
         super();
         this.playground = playground;
@@ -136,7 +171,8 @@ class Player extends GameObject {
 
         this.damage_speed = 0;
         this.cur_skill = null;
-        
+
+        this.speed_time = 0;
     }
     start() {
         if(this.is_me) {
@@ -186,20 +222,32 @@ class Player extends GameObject {
     }
 
     is_attacked(angle,damage){
+
+        let num = 15+Math.random()*10 ;
+        for(let i=0; i<num; i++){
+            let x = this.x, y = this.y;
+            let radius = this.radius * Math.random() * 0.1;
+            let angle = Math.PI * 2 * Math.random();
+            let vx = Math.cos(angle), vy = Math.sin(angle);
+            let color = this.color;
+            let speed = this.speed * 10;
+            let move_length = this.radius * Math.random() * 5;
+            new Particle(this.playground, x, y, radius, vx, vy, color, speed, move_length); 
+        }
+
         this.radius -= damage;
         if(this.radius < 10) {
             this.destory();
             return false;
         }
-
         // 球本身速度矢量 与 球碰撞后带来的速度矢量 进行合成
         this.vx += Math.cos(angle)*damage;
         this.vy += Math.sin(angle)*damage;
         let l = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
         this.vx /= l, this.vy/=l;
         //移动距离
-        this.move_length = this.radius*6;
-        this.damage_speed = this.radius*50;
+        this.move_length = (1/this.radius)*this.playground.height*20;
+        this.damage_speed = (1/this.radius)*this.playground.height*34;
     }
 
     get_dist(x1, y1, x2, y2) {
@@ -215,18 +263,34 @@ class Player extends GameObject {
         this.vy = Math.sin(angle);
     }
 
-    render() {
-        this.ctx.beginPath();
-        this.ctx.arc(this.x,this.y,this.radius,0,Math.PI*2,false);
-        this.ctx.fillStyle = this.color;
-        this.ctx.fill();
+    machine_attack(){
+        let p = Math.random()
+        let player;
+        if(this.is_me) return ;
+        if( p < 0.0025 ) {
+            let id = 0;
+            id =Math.floor(Math.random()* this.playground.players.length);
+            player = this.playground.players[id];
+            if(player ==this) return;
+        }else if( p < 0.0038 ){
+            player = this.playground.players[0];  
+        }else return;
+
+        let dx = this.x-player.x-player.vx*2.1 , dy = this.y-player.y-player.vy*2.1;
+        let t = Math.sqrt(dx*dx + dy*dy)/(this.playground.height * 0.5);
+        let tx = player.x + player.speed * player.vx * t;
+        let ty = player.y + player.speed * player.vy * t;
+        this.shoot_fireball(tx,ty);
     }
 
     update() {
+        this.speed_time += this.timedelta / 1000;
+        if(this.speed_time>1) 
+            this.machine_attack();
         let s = this.speed;
         if(this.damage_speed > this.speed * 0.6){
             s = this.damage_speed;
-            this.damage_speed *= 0.85;
+            this.damage_speed *= 0.9;
             this.move_length *= 0.9;
         }
 
@@ -246,6 +310,13 @@ class Player extends GameObject {
             this.move_length -= moved; 
         }
         this.render();
+    }
+
+    render() {
+        this.ctx.beginPath();
+        this.ctx.arc(this.x,this.y,this.radius,0,Math.PI*2,false);
+        this.ctx.fillStyle = this.color;
+        this.ctx.fill();
     }
 
     on_destory() {
@@ -330,23 +401,22 @@ class FireBall extends GameObject {
         this.root=root;
         this.$playground = $(`
         <div class="ac-game-playground"> </div>`);
-        this.hide();
+        // this.hide();
         this.root.$ac_game.append(this.$playground);
         this.width = this.$playground.width();
         this.height = this.$playground.height();
         this.game_map = new GameMap(this);
 
         this.players = [];
-        this.players.push(new Player(this, this.width/2, this.height/2, this.height*0.05, "white", this.height * 0.15, true));
+        this.players.push(new Player(this, this.width/2, this.height/2, this.height*0.05, "white", this.height * 0.25, true));
 
         this.start();
     }
 
     start() {
-        
         //生成敌人
-        for( let i=0; i<5; i++) {
-            this.players.push(new Player(this, this.width/2, this.height/2, this.height*0.05, this.get_random_color(), this.height * 0.15, false))
+        for( let i=1; i<=9; i++) {
+            this.players.push(new Player(this, this.width/2, this.height/2, this.height*0.05, this.get_random_color(), this.height * 0.20, false))
         }
     }
 
@@ -366,7 +436,7 @@ export class AcGame {
     constructor (id) {
         this.id = id;
         this.$ac_game = $('#'+id);
-        this.menu = new AcGameMenu(this);
+        // this.menu = new AcGameMenu(this);
         this.playground = new AcGamePlayground(this);
         
         this.start();
