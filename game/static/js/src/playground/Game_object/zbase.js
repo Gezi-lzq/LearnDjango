@@ -23,7 +23,7 @@ class GameObject {
     destory() {  // 删掉该物体
         this.on_destory();
         for (let i = 0;i < GAME_OBJECTS.length; i++ ) {
-            if (GAME_OBJECT[i] === this) {
+            if (GAME_OBJECTS[i] === this) {
                 GAME_OBJECTS.splice(i,1);
                 break;
             }
