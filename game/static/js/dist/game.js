@@ -10,6 +10,9 @@ class AcGameMenu {
             </div>
         </div>
     `);
+        // 开始默认隐藏该界面
+        this.hide();
+
         this.root.$ac_game.append(this.$menu);
         this.$single = this.$menu.find('.ac-game-menu-field-item-single');
         this.$multi = this.$menu.find('.ac-game-menu-field-item-multi');
@@ -171,8 +174,15 @@ class Particle extends GameObject {
 
         this.damage_speed = 0;
         this.cur_skill = null;
-
         this.speed_time = 0;
+
+        // 玩家头像
+        if (this.character !== "robot") {
+            this.img = new Image();
+            this.img.src = this.playground.root.settings.photo;
+            console.log(this.img.src);
+        }
+
     }
     start() {
         if(this.is_me) {
@@ -316,10 +326,20 @@ class Particle extends GameObject {
     }
 
     render() {
-        this.ctx.beginPath();
-        this.ctx.arc(this.x,this.y,this.radius,0,Math.PI*2,false);
-        this.ctx.fillStyle = this.color;
-        this.ctx.fill();
+        if(this.is_me) {
+            this.ctx.save();
+            this.ctx.beginPath();
+            this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            this.ctx.stroke();
+            this.ctx.clip();
+            this.ctx.drawImage(this.img, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2); 
+            this.ctx.restore();
+        }else {
+            this.ctx.beginPath();
+            this.ctx.arc(this.x,this.y,this.radius,0,Math.PI*2,false);
+            this.ctx.fillStyle = this.color;
+            this.ctx.fill();
+        }
     }
 
     on_destory() {
@@ -409,12 +429,11 @@ class FireBall extends GameObject {
         
         // this.start();
     }
-
     start() {
         this.root.$ac_game.append(this.$playground);
         this.width = this.$playground.width();
         this.height = this.$playground.height();
-        
+
         this.players = [];
         this.game_map = new GameMap(this);
         this.players.push(new Player(this, this.width/2, this.height/2, this.height*0.05, "white", this.height * 0.25, true));
@@ -439,11 +458,67 @@ class FireBall extends GameObject {
     }
 
 }
-export class AcGame {
-    constructor (id) {
+class Settings {
+    constructor(root) {
+        this.root = root;
+        this.platform = "WEB";
+        if (this.root.AcWingOS) this.platform = "ACAPP";
+
+        this.username = "";
+        this.photo = "";
+
+        this.start();
+    }
+
+    start(){
+        if (this.platform === "ACAPP") {
+            this.getinfo();
+        } else {
+            this.getinfo();
+        }
+    }
+    getinfo() {
+        let outer = this;
+        $.ajax({
+            url: "https://app1210.acapp.acwing.com.cn/settings/getinfo/",
+            type: "GET",
+            data: {
+                platform: outer.platform,
+            },
+            success: function(resp) {
+                console.log(resp)
+                if (resp.result === "success") {
+                    outer.username = resp.username;
+                    outer.photo = resp.photo;
+                    outer.hide();
+                    outer.root.menu.show();
+                } else {
+                    outer.login();
+                }
+            }
+        });
+    }
+
+    login() {
+
+    }
+
+    hide() {
+        
+    }
+
+    show() {
+        
+    }
+
+}export class AcGame {
+    constructor (id, AcWingOS) {
         this.id = id;
+        this.AcWingOS = AcWingOS;
         this.$ac_game = $('#'+id);
+
         this.menu = new AcGameMenu(this);
+        this.settings = new Settings(this);
         this.playground = new AcGamePlayground(this);
         
         this.start();

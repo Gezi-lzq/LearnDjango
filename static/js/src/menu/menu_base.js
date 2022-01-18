@@ -10,6 +10,9 @@ class AcGameMenu {
             </div>
         </div>
     `);
+        // 开始默认隐藏该界面
+        this.hide();
+
         this.root.$ac_game.append(this.$menu);
         this.$single = this.$menu.find('.ac-game-menu-field-item-single');
         this.$multi = this.$menu.find('.ac-game-menu-field-item-multi');
